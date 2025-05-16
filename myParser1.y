@@ -93,7 +93,7 @@
 %type <string> param_list
 %type <string> parameters
 %type <string> return_type
-//%type <string> multifunctiom_declaration
+%type <string> multifunctiom_declaration
 
 %type <string>  comp_declaration
 %type <string>  comp_body
@@ -101,7 +101,6 @@
 %type <string> comp_function
 %type <string> comp_field_list
 %type <string> comp_function_body
-
 %type <string>  assignment_statement
 %type <string>  if_statement
 %type <string> statement
@@ -116,64 +115,24 @@
 %type <string>  complex_table_statement
 %type <string>  empty_statement
 
-%type <string> program_declarations
-
 %start program 
 
 %%
 //*******************************Program Body*******************************
 
 program:
-//we want to print everything from the console to a file (file open file close)
-	program_declarations main_function {
-	//$$ = template("%s",$1);
-        $$ = template("%s %s",$1, $2); 
-
-	  // If there are no errors
-          if (yyerror_count == 0) 
-          {     
-		// Open the file "cfileout.c" for writing
-                FILE *file_pointer = fopen("C_fileout.c","w");
-		
-		// Print C code section header to the console
-                printf("\n\t\t\tC CODE\n");
-                printf("**************************************************************** \n");
-                //printf("\n%s", $1);
-                printf("\n%s\n%s", $1, $2);
-                printf("\n************************************************************** \n");
-                printf("\t\t\tC END CODE\n");
-
-		// Write the C code to the file with some extra includes
-                fputs("#include <stdio.h>\n",file_pointer);
-                fputs("#include <math.h>\n",file_pointer);
-                fputs(c_prologue,file_pointer);
-                //fprintf(file_pointer,"%s\n", $1);
-                fprintf(file_pointer,"%s\n%s", $1, $2);
-                
-		// Close the file
-                fclose(file_pointer);               
-          }
-        }
-	//comp_declaration program  {printf("%s\n%s", $1, $2);} // try below or theirs
-	//|multifunctiom_declaration main_function {printf("%s\n%s", $1, $2);}
-	//|main_function {printf("%s\n", $1);}
+	comp_declaration program  {printf("%s\n%s", $1, $2);} // try below or theirs
+	|multifunctiom_declaration main_function {printf("%s\n%s", $1, $2);}
+	|main_function {printf("%s\n", $1);}
 ;
 //|multifunctiom_declaration main_function {printf("%s\n%s", $1, $2);}
 
-//*******************************Program Declarations*******************************
-program_declarations:
-	program_declarations comp_declaration  {template("%s\n%s", $1, $2);}
-	| program_declarations function_declaration {template("%s\n%s", $1, $2);}
-	| program_declarations variable_declaration {template("%s\n%s", $1, $2);}
-	//| program_declarations multifunctiom_declaration {template("%s\n", $1);}
-	//| program_declarations  main_function {template("%s\n%s", $1, $2);}
-	| %empty { $$ = template(""); }
-;
 
-//multifunctiom_declaration:
-//	multifunctiom_declaration function_declaration { $$ = template("%s\n%s", $1, $2);}
-//	| function_declaration { $$ = $1; }
-//;
+
+multifunctiom_declaration:
+	multifunctiom_declaration function_declaration { $$ = template("%s\n%s", $1, $2);}
+	| function_declaration { $$ = $1; }
+;
 
 /******************************* Main function *******************************/
 main_function:
@@ -203,22 +162,20 @@ statements:
 ; // because multi statement were often
 
 statement:
-	//variable_declaration{ $$ = $1; }
 	type_declaration { $$ = $1; }
-	| const_declaration { $$ = $1; }
+	|const_declaration { $$ = $1; }
 	// |expr { $$ = $1; } //remember why or remove    //temp out due to shift/reduce conflic
-	| assignment_statement { $$ = $1; }
-	| if_statement { $$ = $1; }
-	| for_statement { $$ = $1; }
-	| while_statement { $$ = $1; }
-	| break_statement { $$ = $1; }
-	| continue_statement { $$ = $1; }
+	|assignment_statement { $$ = $1; }
+	|if_statement { $$ = $1; }
+	|for_statement { $$ = $1; }
+	|while_statement { $$ = $1; }
+	|break_statement { $$ = $1; }
+	|continue_statement { $$ = $1; }
 	|return_statement { $$ = $1; } //move it here, change what is need
 	| function_call { $$ = $1; }
 	| simple_table_statement { $$ = $1; }
-	| complex_table_statement { $$ = $1; }
-	| empty_statement { $$ = $1; }
-
+	|complex_table_statement { $$ = $1; }
+	|empty_statement { $$ = $1; }
 ;
 
 
@@ -259,8 +216,9 @@ continue_statement:
 	;
 	
 return_statement:
-	KW_RETURN DEL_SEMI_COL { $$ = template("return;");}
-	| KW_RETURN expr DEL_SEMI_COL { $$ = template("return %s;"), $2;}
+	KW_RETURN DEL_SEMI_COL {$$ = template("return;");}
+	| KW_RETURN expr DEL_SEMI_COL {$$ = template("return %s;", $2);}
+	
 ;
 
 function_call:
@@ -327,12 +285,12 @@ expr:
 	
 	// | DEL_PERIOD  //access member of complex type
 	| VAR_IDENT DEL_LBRACKET expr DEL_RBRACKET {$$ = template("%s[%s]", $1, $3);}
-	| VAR_IDENT DEL_LPAREN arg_list DEL_RPAREN {$$ = template("%s(%s)", $1, $3);}  //for function call
-	| DEL_LPAREN arg_list DEL_RPAREN {$$ = template("(%s)", $2);}
+	| VAR_IDENT DEL_LPAREN expr DEL_RPAREN {$$ = template("%s(%s)", $1, $3);}  //expr other have arg_list
+	| DEL_LPAREN expr DEL_RPAREN {$$ = template("(%s)", $2);} //expr other have arg_list
 	| expr OP_POWER expr {$$ = template("pow(%s, %s)", $1, $3);}
-//add + - for positive and negative numbers
-	|TK_PLUS expr {$$ = template("(+%s)", $2);}
-	|TK_MINUS expr {$$ = template("(-%s)", $2);}
+
+	| TK_PLUS expr {$$ = template("(+%s)", $2);}
+	| TK_MINUS expr {$$ = template("(-%s)", $2);}
 	
 	| expr OP_MULT expr {$$ = template("%s * %s", $1, $3);}
 	| expr OP_DIV expr {$$ = template("%s / %s", $1, $3);}
@@ -410,7 +368,7 @@ function_declaration:
 ;
 
 function_body:
-	statements { $$ = template("%s\n", $1);}   // statement not statements because it loops here and their
+	statements { $$ = template("%s\n", $1);}
 ;
 
 param_list:
@@ -423,6 +381,7 @@ parameters:
 	| VAR_IDENT DEL_LBRACKET VAR_INT DEL_RBRACKET  DEL_COLON data_type  {$$ = template("%s %s[%s]", $6 , $1, $3);}
 	| VAR_IDENT DEL_LBRACKET DEL_RBRACKET DEL_COLON data_type  {$$ = template("%s* %s", $5, $1);}  //shift/reduce conflict!!!
 ;
+
 
 return_type:
 	data_type { $$ = $1; }
